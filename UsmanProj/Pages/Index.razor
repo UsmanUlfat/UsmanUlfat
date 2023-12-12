@@ -1,0 +1,85 @@
+﻿@page "/"
+@using System.Linq
+@using Microsoft.EntityFrameworkCore;
+@inject DbContext DbContext
+
+<h3>Data Display</h3>
+
+<div>
+    <h4>1. Retrieve Information from the Database</h4>
+    <p>a. Names and Room Numbers for Classes with More than 100 Students:</p>
+    <ul>
+        @foreach (var result in GetClassesWithMoreThan100Students())
+        {
+            <li>@result.Name - Room: @result.RoomNumber</li>
+        }
+    </ul>
+
+    <p>b. IDs and Majors of Students Who Take No Classes with Teachers in Department 22:</p>
+    <ul>
+        @foreach (var result in GetStudentsWithNoClassesInDepartment22())
+        {
+            <li>ID: @result.Sid - Major: @result.Major</li>
+        }
+    </ul>
+</div>
+
+<div>
+    <h4>2. Additional LINQ Challenges</h4>
+    <p>a. Names of Students Enrolled in Classes and Have Not Yet Received Any Marks:</p>
+    <ul>
+        @foreach (var result in GetStudentsWithNoMarks())
+        {
+            <li>@result.Sname</li>
+        }
+    </ul>
+
+    <p>b. Average Age of Students in Each Major:</p>
+    <ul>
+        @foreach (var result in GetAverageAgeByMajor())
+        {
+            <li>Major: @result.Major - Average Age: @result.AverageAge</li>
+        }
+    </ul>
+
+    <!-- Additional queries (c, d, e) can be added here -->
+</div>
+
+@code {
+    // LINQ Queries
+
+    private IQueryable<Class> GetClassesWithMoreThan100Students()
+    {
+        return DbContext.Classes
+            .Where(c => DbContext.Enrolled.Count(e => e.Class.Cid == c.Cid) > 100);
+    }
+
+    private IQueryable<Student> GetStudentsWithNoClassesInDepartment22()
+    {
+        var studentsInDept22 = DbContext.Faculties
+            .Where(f => f.Deptid == 22)
+            .SelectMany(f => f.Classes)
+            .SelectMany(c => c.Enrolled)
+            .Select(e => e.Sid);
+
+        return DbContext.Student
+            .Where(s => !studentsInDept22.Contains(s.Sid));
+    }
+
+    private IQueryable<Student> GetStudentsWithNoMarks()
+    {
+        return DbContext.Student
+            .Where(s => s.Enrolled.Any(e => !e.Marks.Any()));
+    }
+
+    private IQueryable<object> GetAverageAgeByMajor()
+    {
+        return DbContext.Student
+            .GroupBy(s => s.Major)
+            .Select(g => new
+            {
+                Major = g.Key,
+                AverageAge = g.Average(s => s.Standing)
+            });
+    }
+}
